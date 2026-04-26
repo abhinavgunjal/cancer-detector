@@ -2,11 +2,11 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 
 def build_dnn(input_dim):
-    model = Sequential()
-    
-    model.add(Dense(64, activation='relu', input_shape=(input_dim,)))
-    model.add(Dense(32, activation='relu'))
-    model.add(Dense(1, activation='sigmoid'))
+    model = Sequential([
+        Dense(64, activation='relu', input_shape=(input_dim,)),
+        Dense(32, activation='relu'),
+        Dense(1, activation='sigmoid')
+    ])
 
     model.compile(
         optimizer='adam',
