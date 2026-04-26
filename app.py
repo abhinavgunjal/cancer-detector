@@ -2,92 +2,25 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from models.dnn import build_dnn
 
 # =========================
-# PAGE CONFIG
+# CONFIG
 # =========================
 st.set_page_config(page_title="AI Cancer Predictor", layout="wide")
 
 # =========================
-# APPLE DARK CSS
+# LOAD MODEL SAFELY
 # =========================
-st.markdown("""
-<style>
-body {
-    background-color: #0b0b0c;
-    color: #f5f5f7;
-}
+df = pd.read_csv("data/lung_cancer.csv")
+feature_names = df.drop('PULMONARY_DISEASE', axis=1).columns.tolist()
 
-.block-container {
-    padding-top: 2rem;
-}
+model = build_dnn(len(feature_names))
+model.load_weights("model.weights.h5")
 
-.title {
-    font-size: 32px;
-    font-weight: 600;
-}
-
-.subtitle {
-    color: #a1a1a6;
-    margin-bottom: 25px;
-}
-
-.section {
-    font-size: 14px;
-    font-weight: 600;
-    margin-top: 18px;
-    margin-bottom: 5px;
-    color: #d1d1d6;
-}
-
-/* Cards */
-.card {
-    background: #1c1c1e;
-    padding: 20px;
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.05);
-}
-
-/* Result card */
-.result-card {
-    background: #1c1c1e;
-    padding: 25px;
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.08);
-}
-
-/* Colors */
-.low { color: #30d158; }
-.medium { color: #ffd60a; }
-.high { color: #ff453a; }
-
-/* Progress bar */
-.stProgress > div > div {
-    background-color: #0a84ff !important;
-}
-
-/* Inputs */
-.stSelectbox div[data-baseweb="select"] {
-    background-color: #1c1c1e;
-    border-radius: 10px;
-}
-
-.stSlider > div {
-    color: white;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# =========================
-# LOAD MODEL
-# =========================
-model = tf.keras.models.load_model("model.keras")
 mean = np.load("mean.npy")
 std = np.load("std.npy")
 std[std == 0] = 1
-
-df = pd.read_csv("data/lung_cancer.csv")
-feature_names = df.drop('PULMONARY_DISEASE', axis=1).columns.tolist()
 
 # =========================
 # PREDICT FUNCTION
@@ -106,14 +39,11 @@ def predict(data):
     prob = 0.1 + 0.8 * prob
 
     if prob > 0.7:
-        label = "High Risk"
-        color = "high"
+        label = "🔴 High Risk"
     elif prob > 0.4:
-        label = "Moderate Risk"
-        color = "medium"
+        label = "🟡 Moderate Risk"
     else:
-        label = "Low Risk"
-        color = "low"
+        label = "🟢 Low Risk"
 
     reasons = []
     if data["SMOKING"]: reasons.append("smoking")
@@ -128,38 +58,29 @@ def predict(data):
         if reasons else "No significant risk indicators were identified."
     )
 
-    return label, prob, explanation, color
+    return label, prob, explanation
 
 
 # =========================
-# HEADER
+# UI
 # =========================
-st.markdown('<div class="title">AI Cancer Predictor</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Clinical lung cancer risk assessment system</div>', unsafe_allow_html=True)
+st.title("🧠 AI Cancer Predictor")
+st.caption("Clinical lung cancer risk assessment system")
 
-# =========================
-# LAYOUT
-# =========================
 col1, col2 = st.columns([2,1])
 
-# =========================
-# INPUT PANEL
-# =========================
+# INPUTS
 with col1:
 
-    st.markdown('<div class="section">Basic Information</div>', unsafe_allow_html=True)
     age = st.slider("Age", 10, 90, 40)
 
-    st.markdown('<div class="section">Lifestyle</div>', unsafe_allow_html=True)
     smoking = st.selectbox("Smoking", ["No","Yes"])
-    alcohol = st.selectbox("Alcohol Consumption", ["No","Yes"])
+    alcohol = st.selectbox("Alcohol", ["No","Yes"])
 
-    st.markdown('<div class="section">Medical & Behavioral</div>', unsafe_allow_html=True)
     anxiety = st.selectbox("Mental Stress", ["No","Yes"])
     pollution = st.selectbox("Pollution Exposure", ["No","Yes"])
     illness = st.selectbox("Chronic Disease", ["No","Yes"])
 
-    st.markdown('<div class="section">Symptoms</div>', unsafe_allow_html=True)
     yellow_fingers = st.selectbox("Finger Discoloration", ["No","Yes"])
     energy = st.selectbox("Low Energy", ["No","Yes"])
     immunity = st.selectbox("Weak Immunity", ["No","Yes"])
@@ -168,7 +89,6 @@ with col1:
     swallowing = st.selectbox("Stress Immune Effect", ["No","Yes"])
     chest = st.selectbox("Chest Tightness", ["No","Yes"])
 
-    st.markdown('<div class="section">Additional Factors</div>', unsafe_allow_html=True)
     gender = st.selectbox("Gender", ["Female","Male"])
     oxygen = st.slider("Oxygen Saturation", 80, 100, 95)
     family = st.selectbox("Family History", ["No","Yes"])
@@ -196,37 +116,21 @@ with col1:
             "STRESS_IMMUNE": 1 if swallowing == "Yes" else 0
         }
 
-        label, prob, explanation, color = predict(input_data)
+        label, prob, explanation = predict(input_data)
 
         st.session_state.result = label
         st.session_state.prob = prob
         st.session_state.explanation = explanation
-        st.session_state.color = color
 
-
-# =========================
-# RESULT PANEL
-# =========================
+# RESULT
 with col2:
 
-    st.markdown("### Result")
-
     if "result" in st.session_state:
-
-        st.markdown(f"""
-        <div class="result-card">
-            <h2 class="{st.session_state.color}">{st.session_state.result}</h2>
-            <p style="color:#a1a1a6;">Risk Score: {st.session_state.prob:.2f}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
+        st.markdown(f"### {st.session_state.result}")
         st.progress(int(st.session_state.prob * 100))
+        st.write(f"Risk Score: {st.session_state.prob:.2f}")
         st.info(st.session_state.explanation)
-
     else:
-        st.markdown("No prediction yet")
+        st.write("Waiting for input...")
 
-# =========================
-# FOOTER
-# =========================
-st.caption("⚠️ For educational use only. Not a medical diagnosis.")
+st.caption("⚠️ Not a medical diagnosis.")
