@@ -81,7 +81,7 @@ body {
 # =========================
 # LOAD MODEL
 # =========================
-model = tf.keras.models.load_model("model.h5")
+model = tf.keras.models.load_model("model.keras")
 mean = np.load("mean.npy")
 std = np.load("std.npy")
 std[std == 0] = 1
