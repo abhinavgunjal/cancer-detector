@@ -9,7 +9,7 @@ X_train, X_test = scale_data(X_train, X_test)
 print("Data loaded")
 
 # Build model
-print("App features:", len(feature_names))
+st.write("App features:", len(feature_names))
 
 print("Training model...")
 model.fit(X_train, y_train, epochs=10, verbose=1)
